@@ -9,9 +9,11 @@ import { Input } from "@/components/ui";
 export function ClienteSelector({
   value,
   onChange,
+  placeholder = "Consumidor final (buscar cliente…)",
 }: {
   value: Cliente | null;
   onChange: (c: Cliente | null) => void;
+  placeholder?: string;
 }) {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [q, setQ] = useState("");
@@ -52,7 +54,7 @@ export function ClienteSelector({
     <div className="relative">
       <Input
         className="w-full"
-        placeholder="Consumidor final (buscar cliente…)"
+        placeholder={placeholder}
         value={q}
         onChange={(e) => {
           setQ(e.target.value);

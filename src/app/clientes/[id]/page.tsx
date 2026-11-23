@@ -73,6 +73,9 @@ export default function ClienteDetalle() {
             <Button variant="secondary" onClick={() => setModal("editar")}>
               Editar datos
             </Button>
+            <Link href={`/ventas?cliente=${cliente.id}`}>
+              <Button variant="secondary">Todas sus compras</Button>
+            </Link>
             <Link href={`/ventas/nueva?cliente=${cliente.id}`}>
               <Button variant="secondary">Nueva venta</Button>
             </Link>

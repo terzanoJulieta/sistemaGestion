@@ -19,16 +19,18 @@ export default function PagosPage() {
   const [hasta, setHasta] = useState("");
   const [nuevo, setNuevo] = useState(false);
   const [cliente, setCliente] = useState<Cliente | null>(null);
+  const [filtroCliente, setFiltroCliente] = useState<Cliente | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const cargar = useCallback(async () => {
     let q = supabase.from("pagos").select("*, clientes(nombre)").order("fecha", { ascending: false }).limit(1000);
+    if (filtroCliente) q = q.eq("cliente_id", filtroCliente.id);
     if (desde) q = q.gte("fecha", new Date(`${desde}T00:00:00`).toISOString());
     if (hasta) q = q.lt("fecha", new Date(new Date(`${hasta}T00:00:00`).getTime() + 86400000).toISOString());
     const { data, error } = await q;
     if (error) setError(mensajeError(error));
     else setPagos(data as Pago[]);
-  }, [desde, hasta]);
+  }, [desde, hasta, filtroCliente]);
 
   useEffect(() => {
     cargar();
@@ -57,6 +59,11 @@ export default function PagosPage() {
         </Field>
         <Field label="Hasta">
           <Input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} />
+        </Field>
+        <Field label="Cliente">
+          <div className="w-64">
+            <ClienteSelector value={filtroCliente} onChange={setFiltroCliente} placeholder="Todos los clientes" />
+          </div>
         </Field>
         <div className="ml-auto text-sm">
           Total cobrado: <b className="text-lg">{pesos(total)}</b>

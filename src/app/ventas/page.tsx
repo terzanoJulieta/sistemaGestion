@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { supabase, mensajeError } from "@/lib/supabase";
 import { fechaHora, pesos } from "@/lib/format";
-import { MEDIOS_PAGO, medioPagoLabel, type Venta } from "@/lib/types";
+import { MEDIOS_PAGO, medioPagoLabel, type Cliente, type Venta } from "@/lib/types";
+import { ClienteSelector } from "@/components/ClienteSelector";
 import { Badge, Button, ErrorMsg, Field, Input, PageHeader, Select, Table, td, th } from "@/components/ui";
 
 const hoy = () => {
@@ -17,6 +18,8 @@ export default function VentasPage() {
   const [desde, setDesde] = useState(hoy());
   const [hasta, setHasta] = useState(hoy());
   const [medio, setMedio] = useState("");
+  const [cliente, setCliente] = useState<Cliente | null>(null);
+  const [numero, setNumero] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const cargar = useCallback(async () => {
@@ -25,17 +28,41 @@ export default function VentasPage() {
       .select("*, clientes(nombre)")
       .order("fecha", { ascending: false })
       .limit(1000);
-    if (desde) q = q.gte("fecha", new Date(`${desde}T00:00:00`).toISOString());
-    if (hasta) q = q.lt("fecha", new Date(new Date(`${hasta}T00:00:00`).getTime() + 86400000).toISOString());
-    if (medio) q = q.eq("medio_pago", medio);
+    const n = Number(numero.replace(/\D/g, ""));
+    if (n) q = q.eq("id", n); // buscando por N° se ignoran las fechas
+    if (!n && cliente) q = q.eq("cliente_id", cliente.id);
+    if (!n && desde) q = q.gte("fecha", new Date(`${desde}T00:00:00`).toISOString());
+    if (!n && hasta) q = q.lt("fecha", new Date(new Date(`${hasta}T00:00:00`).getTime() + 86400000).toISOString());
+    if (!n && medio) q = q.eq("medio_pago", medio);
     const { data, error } = await q;
     if (error) setError(mensajeError(error));
     else setVentas(data as Venta[]);
-  }, [desde, hasta, medio]);
+  }, [desde, hasta, medio, cliente, numero]);
 
   useEffect(() => {
     cargar();
   }, [cargar]);
+
+  // Al elegir un cliente mostramos todas sus compras (se pueden volver a poner fechas).
+  function elegirCliente(c: Cliente | null) {
+    setCliente(c);
+    if (c) {
+      setDesde("");
+      setHasta("");
+    }
+  }
+
+  // Desde la ficha del cliente: /ventas?cliente=ID
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("cliente");
+    if (id)
+      supabase
+        .from("clientes_saldo")
+        .select("*")
+        .eq("id", Number(id))
+        .single()
+        .then(({ data }) => data && elegirCliente(data as Cliente));
+  }, []);
 
   const confirmadas = ventas.filter((v) => v.estado === "confirmada");
   const total = confirmadas.reduce((a, v) => a + Number(v.total), 0);
@@ -56,10 +83,23 @@ export default function VentasPage() {
       />
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <Field label="Desde">
-          <Input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} />
+          <div className="flex gap-1">
+            <Input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} />
+            <Button variant="ghost" type="button" onClick={() => setDesde("")} title="Sin fecha desde">
+              ✕
+            </Button>
+          </div>
         </Field>
         <Field label="Hasta">
           <Input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} />
+        </Field>
+        <Field label="Cliente">
+          <div className="w-64">
+            <ClienteSelector value={cliente} onChange={elegirCliente} placeholder="Todos los clientes" />
+          </div>
+        </Field>
+        <Field label="N° de venta">
+          <Input className="w-32" value={numero} onChange={(e) => setNumero(e.target.value)} placeholder="Ej: 125" />
         </Field>
         <Field label="Medio de pago">
           <Select value={medio} onChange={(e) => setMedio(e.target.value)}>
