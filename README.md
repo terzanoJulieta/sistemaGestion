@@ -22,7 +22,7 @@ La lectora funciona como un teclado: escribe el código y manda Enter. En **Nuev
 
 ### 1. Supabase
 1. Creá un proyecto en [supabase.com](https://supabase.com).
-2. Entrá a **SQL Editor → New query**, pegá todo el contenido de `supabase/migrations/0001_esquema_inicial.sql` y tocá **Run**. Después hacé lo mismo, en orden, con `0002_permisos.sql` y `0003_devoluciones_y_precios.sql`.
+2. Entrá a **SQL Editor → New query**, pegá todo el contenido de `supabase/migrations/0001_esquema_inicial.sql` y tocá **Run**. Después hacé lo mismo, en orden, con `0002_permisos.sql`, `0003_devoluciones_y_precios.sql` y `0004_backup.sql`.
 3. Creá tu usuario: **Authentication → Users → Add user → Create new user** (email y contraseña, tildá *Auto Confirm User*).
 4. Para que nadie más pueda registrarse: **Authentication → Sign In / Providers** y desactivá **Allow new users to sign up**.
 

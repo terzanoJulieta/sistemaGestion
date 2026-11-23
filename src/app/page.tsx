@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { pesos, inicioDelDia } from "@/lib/format";
 import type { Producto } from "@/lib/types";
+import { ultimoBackup } from "@/lib/backup";
 
 const MEDIOS_CAJA = [
   { value: "efectivo", label: "Efectivo" },
@@ -22,6 +23,14 @@ export default function Inicio() {
   const [caja, setCaja] = useState<FilaCaja[]>([]);
   const [fiadoTotal, setFiadoTotal] = useState(0);
   const [stockBajo, setStockBajo] = useState<Producto[]>([]);
+  const [avisoBackup, setAvisoBackup] = useState<string | null>(null);
+
+  useEffect(() => {
+    const u = ultimoBackup();
+    const dias = u ? Math.floor((Date.now() - u.getTime()) / 86400000) : null;
+    if (dias === null) setAvisoBackup("Todavía no descargaste ningún backup de los datos.");
+    else if (dias >= 7) setAvisoBackup(`Hace ${dias} días que no descargás un backup de los datos.`);
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -65,6 +74,14 @@ export default function Inicio() {
           </Link>
         }
       />
+      {avisoBackup && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <span>{avisoBackup}</span>
+          <Link href="/backup" className="font-medium text-amber-900 underline">
+            Hacer backup ahora
+          </Link>
+        </div>
+      )}
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Card>
           <div className="text-sm text-slate-500">Ventas de hoy</div>
