@@ -1,36 +1,61 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sistema de Gestión del Comercio
 
-## Getting Started
+App web para un comercio polirrubro (cotillón, ropa, juguetes, librería).
+Hecha con **Next.js** (se publica en **Vercel**) y **Supabase** (base de datos y login).
 
-First, run the development server:
+## Módulos
 
+| Sección | Qué hace |
+|---|---|
+| **Productos** | Alta, baja (desactivar) y modificación. Categorías, talle y color, precio de costo y de venta. Si un producto no trae código de barras, el sistema genera uno interno (EAN-13 que empieza con `20`). |
+| **Stock** | Ingreso de mercadería, ajuste por conteo, alerta de stock bajo e historial de cada movimiento. |
+| **Clientes** | Alta, baja y modificación, con límite de fiado opcional. |
+| **Nueva venta** | Se escanea con la lectora y el producto se agrega solo. Descuento en $ o %, vuelto, y la venta descuenta stock. `F2` confirma la venta. |
+| **Comprobante** | Ticket para impresora térmica de 80 mm (no válido como factura). Se abre el diálogo de impresión al confirmar la venta. Una venta se puede anular: devuelve el stock y la saca de la cuenta corriente. |
+| **Cuenta corriente** | Ventas fiadas y pagos de cada cliente con saldo. Respeta el límite de fiado. |
+| **Pagos** | Registro de todos los pagos de clientes, filtrable por fecha. |
+
+### Lectora de código de barras
+La lectora funciona como un teclado: escribe el código y manda Enter. En **Nueva venta**, **Stock** y **Productos** hay un campo con el ícono ▮▯▮ que ya tiene el foco: escaneás y listo. En el mismo campo también se puede escribir el nombre del producto para buscarlo.
+
+## Puesta en marcha
+
+### 1. Supabase
+1. Creá un proyecto en [supabase.com](https://supabase.com).
+2. Entrá a **SQL Editor → New query**, pegá todo el contenido de `supabase/migrations/0001_esquema_inicial.sql` y tocá **Run**.
+3. Creá tu usuario: **Authentication → Users → Add user → Create new user** (email y contraseña, tildá *Auto Confirm User*).
+4. Para que nadie más pueda registrarse: **Authentication → Sign In / Providers** y desactivá **Allow new users to sign up**.
+
+### 2. Variables de entorno
+Los valores están en Supabase, en **Project Settings → API** (URL del proyecto y la clave `anon` / *publishable*).
+**Nunca subas estas claves al repositorio ni las pegues en un chat.**
+
+- **En tu computadora:** copiá `.env.example` como `.env.local` y completalo. El archivo `.env.local` ya está ignorado por git.
+- **En Vercel:** al importar el repo, en **Settings → Environment Variables** cargá las mismas variables:
+  - `NEXT_PUBLIC_SUPABASE_URL`
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  - `NEXT_PUBLIC_COMERCIO_NOMBRE`, `NEXT_PUBLIC_COMERCIO_DIRECCION`, `NEXT_PUBLIC_COMERCIO_TELEFONO`, `NEXT_PUBLIC_COMERCIO_CUIT` (datos del comprobante, opcionales)
+
+La clave `anon` es pública por diseño: los datos están protegidos porque cada tabla exige usuario logueado (Row Level Security).
+
+### 3. Correr en tu computadora
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
+Abrí http://localhost:3000.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 4. Publicar en Vercel
+En [vercel.com](https://vercel.com) → **Add New → Project** → elegí este repo → cargá las variables del paso 2 → **Deploy**.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Base de datos
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `categorias`, `productos`, `clientes`
+- `ventas` + `venta_items`
+- `movimientos_stock`: historial de cada cambio de stock
+- `pagos`
+- Vistas `cuenta_corriente_movimientos` y `clientes_saldo`
+- Funciones `crear_venta`, `anular_venta` y `registrar_movimiento_stock`: hacen todo en una sola operación (o se guarda todo o nada).
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Próximamente
+- Etiquetas con código de barras para impresora Xprinter. Los productos ya tienen su código, y los que no traían uno tienen un código interno listo para imprimir.
