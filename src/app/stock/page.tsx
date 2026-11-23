@@ -25,6 +25,7 @@ const TIPOS: Record<string, { label: string; color: "green" | "red" | "amber" | 
   ajuste: { label: "Ajuste", color: "amber" },
   venta: { label: "Venta", color: "red" },
   anulacion_venta: { label: "Anulación de venta", color: "green" },
+  devolucion: { label: "Devolución", color: "green" },
 };
 
 export default function StockPage() {

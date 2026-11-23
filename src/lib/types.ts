@@ -11,6 +11,7 @@ export type Producto = {
   color: string | null;
   precio_costo: number;
   precio_venta: number;
+  margen_ganancia: number | null;
   stock_actual: number;
   stock_minimo: number;
   activo: boolean;
@@ -53,6 +54,7 @@ export type Venta = {
   medio_pago: MedioPago;
   estado: "confirmada" | "anulada";
   observaciones: string | null;
+  total_devuelto: number;
   clientes?: { nombre: string } | null;
 };
 
@@ -63,6 +65,7 @@ export type VentaItem = {
   cantidad: number;
   precio_unitario: number;
   subtotal: number;
+  cantidad_devuelta: number;
 };
 
 export type Pago = {

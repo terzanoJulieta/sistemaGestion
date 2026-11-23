@@ -12,7 +12,7 @@ import { Button, Card, ErrorMsg, Modal, PageHeader, Table, td, th } from "@/comp
 
 type Mov = {
   fecha: string;
-  tipo: "venta" | "pago";
+  tipo: "venta" | "pago" | "devolucion";
   venta_id: number | null;
   pago_id: number | null;
   concepto: string;
@@ -119,8 +119,8 @@ export default function ClienteDetalle() {
           {filas
             .slice()
             .reverse()
-            .map((m) => (
-              <tr key={`${m.tipo}-${m.venta_id ?? m.pago_id}`}>
+            .map((m, i) => (
+              <tr key={i}>
                 <td className={td}>{fechaHora(m.fecha)}</td>
                 <td className={td}>
                   {m.venta_id ? (

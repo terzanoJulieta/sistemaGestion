@@ -6,6 +6,7 @@ import { pesos, limpiarBusqueda } from "@/lib/format";
 import type { Categoria, Producto } from "@/lib/types";
 import { Badge, Button, ErrorMsg, Field, Input, Modal, PageHeader, Select, Table, td, th } from "@/components/ui";
 import { ScannerInput } from "@/components/ScannerInput";
+import { AumentoMasivo } from "@/components/AumentoMasivo";
 
 type Form = {
   id?: number;
@@ -17,6 +18,7 @@ type Form = {
   color: string;
   precio_costo: string;
   precio_venta: string;
+  margen: string;
   stock_inicial: string;
   stock_minimo: string;
   activo: boolean;
@@ -31,6 +33,7 @@ const vacio = (codigo = ""): Form => ({
   color: "",
   precio_costo: "",
   precio_venta: "",
+  margen: "",
   stock_inicial: "",
   stock_minimo: "0",
   activo: true,
@@ -48,6 +51,8 @@ export default function ProductosPage() {
   const [aviso, setAviso] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [nuevaCat, setNuevaCat] = useState("");
+  const [aumento, setAumento] = useState(false);
+  const [ok, setOk] = useState<string | null>(null);
 
   const cargar = useCallback(async () => {
     let query = supabase.from("productos").select("*, categorias(nombre)").order("nombre").limit(500);
@@ -86,6 +91,7 @@ export default function ProductosPage() {
       color: p.color ?? "",
       precio_costo: String(p.precio_costo),
       precio_venta: String(p.precio_venta),
+      margen: p.margen_ganancia != null ? String(Number(p.margen_ganancia)) : "",
       stock_inicial: "",
       stock_minimo: String(p.stock_minimo),
       activo: p.activo,
@@ -117,6 +123,7 @@ export default function ProductosPage() {
       color: form.color.trim() || null,
       precio_costo: Number(form.precio_costo || 0),
       precio_venta: Number(form.precio_venta || 0),
+      margen_ganancia: form.margen === "" ? null : Number(form.margen),
       stock_minimo: Number(form.stock_minimo || 0),
       activo: form.activo,
     };
@@ -154,24 +161,38 @@ export default function ProductosPage() {
     setNuevaCat("");
   }
 
-  const margen =
-    form && Number(form.precio_costo) > 0
-      ? ((Number(form.precio_venta) - Number(form.precio_costo)) / Number(form.precio_costo)) * 100
-      : null;
+  // Precio de lista + % de ganancia → precio de venta (y al revés)
+  const redondear2 = (n: number) => String(Math.round(n * 100) / 100);
+  function cambiarPrecios(campo: "precio_costo" | "margen" | "precio_venta", valor: string) {
+    if (!form) return;
+    const f = { ...form, [campo]: valor };
+    const costo = Number(f.precio_costo);
+    if (campo === "precio_venta") {
+      f.margen = costo > 0 && valor !== "" ? redondear2(((Number(valor) - costo) / costo) * 100) : f.margen;
+    } else if (f.margen !== "" && f.precio_costo !== "") {
+      f.precio_venta = redondear2(costo * (1 + Number(f.margen) / 100));
+    }
+    setForm(f);
+  }
 
   return (
     <div>
       <PageHeader
         title="Productos"
         actions={
-          <Button
-            onClick={() => {
-              setError(null);
-              setForm(vacio());
-            }}
-          >
-            + Nuevo producto
-          </Button>
+          <>
+            <Button variant="secondary" onClick={() => setAumento(true)}>
+              Aumento masivo
+            </Button>
+            <Button
+              onClick={() => {
+                setError(null);
+                setForm(vacio());
+              }}
+            >
+              + Nuevo producto
+            </Button>
+          </>
         }
       />
 
@@ -193,6 +214,21 @@ export default function ProductosPage() {
       </div>
 
       {!form && <ErrorMsg msg={error} />}
+      {ok && <div className="mb-3 rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">{ok}</div>}
+
+      <Modal open={aumento} onClose={() => setAumento(false)} title="Aumento masivo de precios" wide>
+        {aumento && (
+          <AumentoMasivo
+            categorias={categorias}
+            onCancelar={() => setAumento(false)}
+            onAplicado={(n) => {
+              setAumento(false);
+              setOk(`Precios actualizados en ${n} productos.`);
+              cargar();
+            }}
+          />
+        )}
+      </Modal>
 
       <Table>
         <thead>
@@ -200,7 +236,8 @@ export default function ProductosPage() {
             <th className={th}>Código</th>
             <th className={th}>Producto</th>
             <th className={th}>Categoría</th>
-            <th className={`${th} text-right`}>Costo</th>
+            <th className={`${th} text-right`}>Lista</th>
+            <th className={`${th} text-right`}>% Gan.</th>
             <th className={`${th} text-right`}>Precio</th>
             <th className={`${th} text-right`}>Stock</th>
             <th className={th}></th>
@@ -221,6 +258,7 @@ export default function ProductosPage() {
               </td>
               <td className={td}>{p.categorias?.nombre ?? "-"}</td>
               <td className={`${td} text-right`}>{pesos(p.precio_costo)}</td>
+              <td className={`${td} text-right text-slate-500`}>{p.margen_ganancia != null ? `${Number(p.margen_ganancia)}%` : "-"}</td>
               <td className={`${td} text-right font-medium`}>{pesos(p.precio_venta)}</td>
               <td className={`${td} text-right`}>
                 {p.stock_actual <= p.stock_minimo ? <Badge color="red">{p.stock_actual}</Badge> : p.stock_actual}
@@ -234,7 +272,7 @@ export default function ProductosPage() {
           ))}
           {productos.length === 0 && (
             <tr>
-              <td className={`${td} text-center text-slate-500`} colSpan={7}>
+              <td className={`${td} text-center text-slate-500`} colSpan={8}>
                 No hay productos.
               </td>
             </tr>
@@ -281,12 +319,20 @@ export default function ProductosPage() {
             <Field label="Color">
               <Input value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })} placeholder="Opcional" />
             </Field>
-            <Field label="Precio de costo">
-              <Input type="number" step="0.01" min="0" value={form.precio_costo} onChange={(e) => setForm({ ...form, precio_costo: e.target.value })} />
-            </Field>
-            <Field label={`Precio de venta *${margen !== null ? ` (margen ${margen.toFixed(0)}%)` : ""}`}>
-              <Input type="number" step="0.01" min="0" required value={form.precio_venta} onChange={(e) => setForm({ ...form, precio_venta: e.target.value })} />
-            </Field>
+            <div className="grid grid-cols-3 gap-3 sm:col-span-2">
+              <Field label="Precio de lista">
+                <Input type="number" step="0.01" min="0" value={form.precio_costo} onChange={(e) => cambiarPrecios("precio_costo", e.target.value)} />
+              </Field>
+              <Field label="% de ganancia">
+                <Input type="number" step="0.01" value={form.margen} onChange={(e) => cambiarPrecios("margen", e.target.value)} placeholder="Ej: 60" />
+              </Field>
+              <Field label="Precio de venta *">
+                <Input type="number" step="0.01" min="0" required value={form.precio_venta} onChange={(e) => cambiarPrecios("precio_venta", e.target.value)} />
+              </Field>
+              <p className="col-span-3 -mt-1 text-xs text-slate-500">
+                Cargá el precio de lista y el % de ganancia, y el precio de venta se calcula solo. Si cambiás el precio de venta a mano, se recalcula el %.
+              </p>
+            </div>
             {!form.id && (
               <Field label="Stock inicial">
                 <Input type="number" step="1" value={form.stock_inicial} onChange={(e) => setForm({ ...form, stock_inicial: e.target.value })} />

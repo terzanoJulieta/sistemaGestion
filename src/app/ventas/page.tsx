@@ -65,10 +65,11 @@ export default function VentasPage() {
   }, []);
 
   const confirmadas = ventas.filter((v) => v.estado === "confirmada");
-  const total = confirmadas.reduce((a, v) => a + Number(v.total), 0);
+  const neto = (v: Venta) => Number(v.total) - Number(v.total_devuelto ?? 0);
+  const total = confirmadas.reduce((a, v) => a + neto(v), 0);
   const porMedio = MEDIOS_PAGO.map((m) => ({
     ...m,
-    total: confirmadas.filter((v) => v.medio_pago === m.value).reduce((a, v) => a + Number(v.total), 0),
+    total: confirmadas.filter((v) => v.medio_pago === m.value).reduce((a, v) => a + neto(v), 0),
   })).filter((m) => m.total > 0);
 
   return (
@@ -141,8 +142,21 @@ export default function VentasPage() {
               <td className={td}>{fechaHora(v.fecha)}</td>
               <td className={td}>{v.clientes?.nombre ?? "Consumidor final"}</td>
               <td className={td}>{medioPagoLabel(v.medio_pago)}</td>
-              <td className={`${td} text-right font-medium`}>{pesos(v.total)}</td>
-              <td className={td}>{v.estado === "anulada" ? <Badge color="red">Anulada</Badge> : <Badge color="green">OK</Badge>}</td>
+              <td className={`${td} text-right font-medium`}>
+                {pesos(neto(v))}
+                {Number(v.total_devuelto) > 0 && (
+                  <div className="text-xs font-normal text-slate-500">
+                    {pesos(v.total)} − devuelto {pesos(v.total_devuelto)}
+                  </div>
+                )}
+              </td>
+              <td className={td}>{v.estado === "anulada" ? (
+                  <Badge color="red">Anulada</Badge>
+                ) : Number(v.total_devuelto) > 0 ? (
+                  <Badge color="amber">Con devolución</Badge>
+                ) : (
+                  <Badge color="green">OK</Badge>
+                )}</td>
             </tr>
           ))}
           {ventas.length === 0 && (
